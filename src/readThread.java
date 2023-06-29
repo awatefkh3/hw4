@@ -1,0 +1,4 @@
+public class readThread extends Thread{
+    public readThread() {
+    }
+}
