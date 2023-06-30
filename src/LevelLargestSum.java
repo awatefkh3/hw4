@@ -14,9 +14,8 @@ public class LevelLargestSum {
         int maxSumLevel = Integer.MIN_VALUE;
 
         while(!deque.isEmpty()){
-            int size = deque.size();
             int sum = 0;
-            while(size > 0){
+            for(int size = deque.size(); size > 0; size--){
                 BinNode<Integer> curr = deque.removeFirst();
                 sum += curr.getData();
                 if(curr.getLeft() != null){
@@ -25,7 +24,6 @@ public class LevelLargestSum {
                 if(curr.getRight() != null){
                     deque.add(curr.getRight());
                 }
-                size--;
             }
             if(sum > maxSum){
                 maxSum = sum;
