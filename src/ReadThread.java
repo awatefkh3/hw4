@@ -1,6 +1,6 @@
-public class readThread extends Thread{
+public class ReadThread extends Thread{
 //    Database db;
-    public readThread() {
+    public ReadThread() {
     }
 
 //    public readThread(Database db){

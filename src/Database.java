@@ -11,13 +11,14 @@ public class Database {
     private Lock lock = new ReentrantLock();
     private Condition max;
     private int currentReadingNum;
-    private int currentWritingNum;
+    private boolean isWriting;
 
     public Database(int maxNumOfReaders) {
         data = new HashMap<>();  // Note: You may add fields to the class and initialize them in here. Do not add parameters!
         this.maxNumOfReaders = maxNumOfReaders;
         this.max = lock.newCondition();
-        currentReadingNum = 0;
+        this.currentReadingNum = 0;
+        this.isWriting = false;
     }
 
     public void put(String key, String value) {
@@ -31,7 +32,7 @@ public class Database {
     public boolean readTryAcquire() {
         lock.lock();
         try {
-            if (Thread.currentThread() instanceof writeThread) {
+            if (Thread.currentThread() instanceof WriteThread) {
                 return false;
             }
             if (currentReadingNum >= maxNumOfReaders) {
@@ -51,7 +52,7 @@ public class Database {
             while(currentReadingNum>= maxNumOfReaders) {
                 max.await();
             }
-            readThread t = new readThread();
+            ReadThread t = new ReadThread();
             t.start();
             currentReadingNum++;
         }
@@ -75,16 +76,26 @@ public class Database {
         // TODO: Add your code here...
     }
 
-    public void writeAcquire() {
+    public synchronized void writeAcquire() {
+        while(Thread.currentThread() instanceof WriteThread || Thread.currentThread() instanceof ReadThread){
+            try {
+                Thread.currentThread().wait();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        WriteThread write = new WriteThread();
+        write.run();
+        isWriting = true;
        // TODO: Add your code here...
     }
 
-    public boolean writeTryAcquire() {
+    public synchronized boolean writeTryAcquire() {
         // TODO: Add your code here...
-        return true; // temp    DONT FORGET TO DELETE
+        return true;
     }
 
-    public void writeRelease() {
+    public synchronized void writeRelease() {
         // TODO: Add your code here...
     }
 }
