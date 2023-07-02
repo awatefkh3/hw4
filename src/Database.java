@@ -9,16 +9,21 @@ public class Database {
     private Map<String, String> data;
     private int maxNumOfReaders;
     private Lock lock = new ReentrantLock();
-    private Condition max;
+    private Condition readCondition;
     private int currentReadingNum;
     private boolean isWriting;
+    private Condition writeCondition;
+    private int tryReading;
+    private int tryWriting;
 
     public Database(int maxNumOfReaders) {
         data = new HashMap<>();  // Note: You may add fields to the class and initialize them in here. Do not add parameters!
         this.maxNumOfReaders = maxNumOfReaders;
-        this.max = lock.newCondition();
+        this.readCondition = lock.newCondition();
         this.currentReadingNum = 0;
         this.isWriting = false;
+        this.writeCondition = lock.newCondition();
+        this.tryWriting = 0;
     }
 
     public void put(String key, String value) {
@@ -49,22 +54,19 @@ public class Database {
     public void readAcquire() {
         lock.lock();
         try {
-            while(currentReadingNum>= maxNumOfReaders) {
-                max.await();
+            while(isWriting || currentReadingNum >= maxNumOfReaders) {
+                readCondition.await();
+
             }
             ReadThread t = new ReadThread();
             t.start();
             currentReadingNum++;
         }
-        catch(InterruptedException interruptedException){
-            System.out.println("interruptedException");
-        }
-        finally {
+
+        catch (InterruptedException interruptedException) {
+        } finally {
             lock.unlock();
         }
-
-
-        // TODO: Add your code here...
     }
 
     public void readRelease() throws IllegalMonitorStateException{
@@ -76,26 +78,53 @@ public class Database {
         // TODO: Add your code here...
     }
 
-    public synchronized void writeAcquire() {
-        while(Thread.currentThread() instanceof WriteThread || Thread.currentThread() instanceof ReadThread){
-            try {
-                Thread.currentThread().wait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+    public void writeAcquire() {
+        lock.lock();
+        try{
+            while(isWriting || currentReadingNum > 0){
+                writeCondition.await();
+            }
+            isWriting = true;
+        }
+        catch (InterruptedException interruptedException) {
+        }
+        finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean writeTryAcquire() {
+        lock.lock();
+        try {
+            if(isWriting || currentReadingNum > 0 || tryWriting > 0){
+                return false;
+            }
+            tryWriting++;
+            return true;
+        }
+        finally{
+            lock.unlock();
+        }
+    }
+
+    public void writeRelease() throws IllegalMonitorStateException{
+        lock.lock();
+        try {
+            if (!isWriting && tryWriting <= 0) {
+                throw new IllegalMonitorStateException("Illegal write release attempt");
+            } else {
+                if(tryWriting > 0){
+                    tryWriting--;
+                }
+                if(isWriting){
+                    isWriting = false;
+                }
             }
         }
-        WriteThread write = new WriteThread();
-        write.run();
-        isWriting = true;
-       // TODO: Add your code here...
-    }
-
-    public synchronized boolean writeTryAcquire() {
-        // TODO: Add your code here...
-        return true;
-    }
-
-    public synchronized void writeRelease() {
-        // TODO: Add your code here...
+        finally {
+            readCondition.signal();
+            writeCondition.signal();
+            lock.unlock();
+        }
     }
 }
