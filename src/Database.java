@@ -21,6 +21,7 @@ public class Database {
         this.maxNumOfReaders = maxNumOfReaders;
         this.readCondition = lock.newCondition();
         this.currentReadingNum = 0;
+        this.tryReading = 0;
         this.isWriting = false;
         this.writeCondition = lock.newCondition();
         this.tryWriting = 0;
@@ -37,13 +38,10 @@ public class Database {
     public boolean readTryAcquire() {
         lock.lock();
         try {
-            if (Thread.currentThread() instanceof WriteThread) {
+            if (isWriting || currentReadingNum >= maxNumOfReaders || tryReading >= maxNumOfReaders) {
                 return false;
             }
-            if (currentReadingNum >= maxNumOfReaders) {
-//                System.out.println(Thread.activeCount());
-                return false;
-            }
+            tryReading++;
             return true;
         }
         finally {
@@ -58,8 +56,6 @@ public class Database {
                 readCondition.await();
 
             }
-            ReadThread t = new ReadThread();
-            t.start();
             currentReadingNum++;
         }
 
@@ -70,12 +66,25 @@ public class Database {
     }
 
     public void readRelease() throws IllegalMonitorStateException{
-        if(currentReadingNum == 0){
-            throw new IllegalMonitorStateException("Illegal read release attempt");
+        lock.lock();
+        try {
+            if (currentReadingNum <= 0 && tryReading <= 0) {
+
+                throw new IllegalMonitorStateException("Illegal read release attempt");
+            } else{
+                if(tryReading > 0){
+                    tryReading--;
+                }
+                else if(currentReadingNum > 0){
+                    currentReadingNum--;
+                }
+            }
         }
-        currentReadingNum--;
-        max.signalAll();
-        // TODO: Add your code here...
+        finally {
+            readCondition.signal();
+            writeCondition.signal();
+            lock.unlock();
+        }
     }
 
     public void writeAcquire() {
