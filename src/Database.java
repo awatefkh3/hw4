@@ -7,15 +7,28 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
     private Map<String, String> data;
+    /** max number of readers */
     private int maxNumOfReaders;
+    /** the lock we use */
     private Lock lock = new ReentrantLock();
+    /** read condition */
     private Condition readCondition;
+    /** number of current reading threads */
     private int currentReadingNum;
+    /** is a thread writing to the database */
     private boolean isWriting;
+    /** write condition */
     private Condition writeCondition;
+    /** numbers of threads trying to read */
     private int tryReading;
+    /** numbers of threads trying to write */
     private int tryWriting;
 
+
+    /***
+     * constructor that takes maximum number of readers as parameter
+     * @param maxNumOfReaders the maximum number of readers
+     */
     public Database(int maxNumOfReaders) {
         data = new HashMap<>();  // Note: You may add fields to the class and initialize them in here. Do not add parameters!
         this.maxNumOfReaders = maxNumOfReaders;
@@ -27,10 +40,20 @@ public class Database {
         this.tryWriting = 0;
     }
 
+    /***
+     * adds a pair of key value to the dataset
+     * @param key the key we want to add
+     * @param value the value we want to add
+     */
     public void put(String key, String value) {
         data.put(key, value);
     }
 
+    /***
+     * ge the value of data in key
+     * @param key the key we want to get its value
+     * @return the value
+     */
     public String get(String key) {
         return data.get(key);
     }
@@ -69,7 +92,6 @@ public class Database {
         lock.lock();
         try {
             if (currentReadingNum <= 0 && tryReading <= 0) {
-
                 throw new IllegalMonitorStateException("Illegal read release attempt");
             } else{
                 if(tryReading > 0){
