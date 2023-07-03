@@ -1,11 +1,16 @@
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-
+/***
+ * Represents a database.
+ */
 public class Database {
+    /** data map */
     private Map<String, String> data;
     /** max number of readers */
     private int maxNumOfReaders;
@@ -19,10 +24,8 @@ public class Database {
     private boolean isWriting;
     /** write condition */
     private Condition writeCondition;
-    /** numbers of threads trying to read */
-    private int tryReading;
-    /** numbers of threads trying to write */
-    private int tryWriting;
+    /** set of current threads */
+    private Set<Thread> currentThreads;
 
 
     /***
@@ -31,6 +34,7 @@ public class Database {
      */
     public Database(int maxNumOfReaders) {
         data = new HashMap<>();  // Note: You may add fields to the class and initialize them in here. Do not add parameters!
+        this.currentThreads = new HashSet<>();
         this.maxNumOfReaders = maxNumOfReaders;
         this.readCondition = lock.newCondition();
         this.currentReadingNum = 0;
@@ -58,10 +62,14 @@ public class Database {
         return data.get(key);
     }
 
+    /***
+     * this method checks if reading thread can run and if it can, runs the thread.
+     * @return true if read thread can run, false otherwise
+     */
     public boolean readTryAcquire() {
         lock.lock();
         try {
-            if (isWriting || currentReadingNum >= maxNumOfReaders || tryReading >= maxNumOfReaders) {
+            if(isWriting || currentReadingNum >= maxNumOfReaders){
                 return false;
             }
             tryReading++;
@@ -72,6 +80,9 @@ public class Database {
         }
     }
 
+    /***
+     * runs the thread. if the thread cannot run right now it will wait for its turn.
+     */
     public void readAcquire() {
         lock.lock();
         try {
@@ -88,6 +99,10 @@ public class Database {
         }
     }
 
+    /***
+     * releases the reading thread, and signals the waiting threads.
+     * @throws IllegalMonitorStateException when the release attempt is illegal
+     */
     public void readRelease() throws IllegalMonitorStateException{
         lock.lock();
         try {
@@ -103,12 +118,15 @@ public class Database {
             }
         }
         finally {
-            readCondition.signal();
-            writeCondition.signal();
+            readCondition.signalAll();
+            writeCondition.signalAll();
             lock.unlock();
         }
     }
 
+    /***
+     * runs the thread. if the thread cannot run right now it will wait for its turn.
+     */
     public void writeAcquire() {
         lock.lock();
         try{
@@ -124,6 +142,10 @@ public class Database {
         }
     }
 
+    /***
+     * this method checks if writing thread can run and if it can, runs the thread.
+     * @return true if write thread can run, false otherwise
+     */
     public boolean writeTryAcquire() {
         lock.lock();
         try {
@@ -153,8 +175,8 @@ public class Database {
             }
         }
         finally {
-            readCondition.signal();
-            writeCondition.signal();
+            readCondition.signalAll();
+            writeCondition.signalAll();
             lock.unlock();
         }
     }

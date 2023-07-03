@@ -1,5 +1,4 @@
 import java.util.ArrayDeque;
-import java.util.Collection;
 
 /***
  * Represents a binary tree method - level largest sum
