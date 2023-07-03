@@ -38,10 +38,8 @@ public class Database {
         this.maxNumOfReaders = maxNumOfReaders;
         this.readCondition = lock.newCondition();
         this.currentReadingNum = 0;
-        this.tryReading = 0;
         this.isWriting = false;
         this.writeCondition = lock.newCondition();
-        this.tryWriting = 0;
     }
 
     /***
@@ -72,7 +70,7 @@ public class Database {
             if(isWriting || currentReadingNum >= maxNumOfReaders){
                 return false;
             }
-            tryReading++;
+            readAcquire();
             return true;
         }
         finally {
@@ -91,6 +89,7 @@ public class Database {
 
             }
             currentReadingNum++;
+            currentThreads.add(Thread.currentThread());
         }
 
         catch (InterruptedException interruptedException) {
@@ -106,15 +105,12 @@ public class Database {
     public void readRelease() throws IllegalMonitorStateException{
         lock.lock();
         try {
-            if (currentReadingNum <= 0 && tryReading <= 0) {
+            if ( currentReadingNum <= 0 || !currentThreads.contains(Thread.currentThread())) {
                 throw new IllegalMonitorStateException("Illegal read release attempt");
-            } else{
-                if(tryReading > 0){
-                    tryReading--;
-                }
-                else if(currentReadingNum > 0){
-                    currentReadingNum--;
-                }
+            }
+            else{
+                currentReadingNum--;
+                currentThreads.remove(Thread.currentThread());
             }
         }
         finally {
@@ -134,6 +130,7 @@ public class Database {
                 writeCondition.await();
             }
             isWriting = true;
+            currentThreads.add(Thread.currentThread());
         }
         catch (InterruptedException interruptedException) {
         }
@@ -149,10 +146,10 @@ public class Database {
     public boolean writeTryAcquire() {
         lock.lock();
         try {
-            if(isWriting || currentReadingNum > 0 || tryWriting > 0){
+            if(isWriting || currentReadingNum > 0 ){
                 return false;
             }
-            tryWriting++;
+            writeAcquire();
             return true;
         }
         finally{
@@ -160,18 +157,18 @@ public class Database {
         }
     }
 
+    /***
+     * releases the writing thread, and signals the waiting threads.
+     * @throws IllegalMonitorStateException when the release attempt is illegal
+     */
     public void writeRelease() throws IllegalMonitorStateException{
         lock.lock();
         try {
-            if (!isWriting && tryWriting <= 0) {
+            if (!isWriting|| !currentThreads.contains(Thread.currentThread())) {
                 throw new IllegalMonitorStateException("Illegal write release attempt");
             } else {
-                if(tryWriting > 0){
-                    tryWriting--;
-                }
-                if(isWriting){
                     isWriting = false;
-                }
+                    currentThreads.remove(Thread.currentThread());
             }
         }
         finally {

@@ -30,26 +30,50 @@ public class BinNode<E> {
         this(data, null, null);
     }
 
+    /***
+     * gets the data from the current node.
+     * @return data from this node
+     */
     public E getData() {
         return data;
     }
 
+    /***
+     * gets the node to the left fo the current node.
+     * @return the node left of this node.
+     */
     public BinNode<E> getLeft() {
         return left;
     }
 
+    /***
+     * gets the node to the right fo the current node.
+     * @return the node right of this node.
+     */
     public BinNode<E> getRight() {
         return right;
     }
 
+    /***
+     * sets the data in the current node
+     * @param data the data to be set in this node
+     */
     public void setData(E data) {
         this.data = data;
     }
 
+    /***
+     * sets the node to the left fo the current node.
+     * @param left the new node to the left of this node
+     */
     public void setLeft(BinNode<E> left) {
         this.left = left;
     }
 
+    /***
+     * sets the node to the right fo the current node.
+     * @param right the new node to the right of this node
+     */
     public void setRight(BinNode<E> right) {
         this.right = right;
     }

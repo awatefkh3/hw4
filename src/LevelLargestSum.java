@@ -5,9 +5,9 @@ import java.util.ArrayDeque;
  */
 public class LevelLargestSum {
     /***
-     * this method gets the level with the largest su
+     * this method returns the level with the largest sum
      * @param root the root of the binary tree
-     * @return the number of level with the largest sm
+     * @return the number of level with the largest sum
      */
     public static int getLevelWithLargestSum(BinNode<Integer> root) {
         if(root == null){
